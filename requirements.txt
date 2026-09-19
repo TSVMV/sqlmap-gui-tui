@@ -1,0 +1,3 @@
+# TUI 依赖（GUI 用标准库 tkinter，无需额外依赖）
+# 若 Python 3.14 暂无 textual 轮子导致安装失败，可改用 prompt_toolkit 重写 tui 视图层。
+textual>=0.47
