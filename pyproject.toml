@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sqlmapx"
+version = "0.1.0"
+description = "Three-mode launcher (GUI / TUI / CLI) around an unmodified sqlmap."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "GPL-2.0-or-later" }
+authors = [{ name = "sqlmapx" }]
+keywords = ["sqlmap", "gui", "tui", "cli", "security", "pentest"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = [
+    "textual>=0.47",
+]
+
+[project.optional-dependencies]
+tui-fallback = ["prompt_toolkit>=3.0"]
+
+[project.scripts]
+sqlmap-cli = "sqlmapx.cli.passthrough:main"
+sqlmap-tui = "sqlmapx.tui.app:main"
+sqlmap-gui = "sqlmapx.gui.app:main"
+
+[tool.setuptools]
+packages = ["sqlmapx", "sqlmapx.core", "sqlmapx.cli", "sqlmapx.tui", "sqlmapx.gui"]
