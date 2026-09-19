@@ -24,39 +24,57 @@ _OPTION_RE = re.compile(r"^    -")
 def _split_spec_and_desc(body: str) -> tuple:
     """从选项行正文切分出 (规范段, 描述段)。
 
-    规范段 = 行首连续的 "以 - 开头的 token（逗号分隔）"；其后第一个非
-    选项 token（不以 - 开头）开始即为描述。
+    规范段 = 行首由逗号分隔的选项 token 序列；每个 token 形如
+      "-s"、"-s META"、"--long"、"--long=METAVAR"。
+    描述段 = 行首连续选项 token 结束后剩余文本（首个不以 '-' 开头的
+    token 起，且不是前一个短形值选项的 metavar）。
+
+    状态机：遇到 '-' token → 并入规范段；该 token 是短形（-X）且其后
+    紧跟纯大写 metavar（URL、DB、VERBOSE）→ 一并入规范段；遇 "," 并入
+    并继续；遇首个非 '-' token（且不是刚并入的短形 metavar）→ 进入描述。
     """
-    tokens = body.split()
-    spec_parts = []
-    desc_parts = []
-    in_spec = True
+    tokens: list = []
+    # 先按空格切分，再把每个 token 末尾粘连的逗号剥离为独立 token
+    # （sqlmap 帮助形如 "-u URL, --url=URL"，"URL," 需还原为 "URL" + ","）。
+    for raw in body.split():
+        if raw.endswith(",") and len(raw) > 1:
+            tokens.append(raw[:-1])
+            tokens.append(",")
+        else:
+            tokens.append(raw)
+    spec_parts: list = []
     i = 0
-    while i < len(tokens):
+    n = len(tokens)
+    last_opt_short = False  # 上一个并入规范的 token 是否短形值选项
+    while i < n:
         t = tokens[i]
-        is_opt = t.startswith("-")
-        if in_spec and is_opt:
-            spec_parts.append(t)
+        if t == ",":
+            spec_parts.append(",")
             i += 1
-            # 短形值选项 "-X META"：后一个纯大写 metavar 并入规范段。
-            # 长形 "--x" 的 metavar 只来自 "--x=METAVAR"，其后紧跟的
-            # 描述首词（如 "Prompt"）绝不当 metavar。
-            if i < len(tokens) and re.match(r"^[A-Z][A-Z0-9.]*$", tokens[i]) \
-                    and t.startswith("-") and not t.startswith("--"):
+            last_opt_short = False
+            continue
+        if t.startswith("-"):
+            spec_parts.append(t)
+            is_short = t.startswith("-") and not t.startswith("--")
+            i += 1
+            # 短形值选项 "-X META"：后跟纯大写 metavar 并入规范段
+            if is_short and i < n and re.match(r"^[A-Z][A-Z0-9.]*$", tokens[i]) \
+                    and tokens[i] not in (",",):
                 spec_parts.append(tokens[i])
                 i += 1
-            # 逗号分隔的下一 token（如 "-f, --fingerprint"）仍属规范段
-            if i < len(tokens) and tokens[i] == ",":
-                spec_parts.append(",")
-                i += 1
-                continue
-            # 逗号后若还有选项 token，继续并入；否则进入描述段
-            in_spec = i < len(tokens) and tokens[i].startswith("-")
-        if not in_spec:
-            desc_parts.extend(tokens[i:])
-            break
+                last_opt_short = True
+            else:
+                last_opt_short = False
+            continue
+        # 非 '-' token
+        if last_opt_short and re.match(r"^[A-Z][A-Z0-9.]*$", t):
+            # 可能是短形值选项的第二个 metavar（罕见，跳过）
+            spec_parts.append(t)
+            i += 1
+            continue
+        break  # 描述段开始
     spec = " ".join(spec_parts)
-    desc = " ".join(desc_parts).strip()
+    desc = " ".join(tokens[i:]).strip()
     return spec, desc
 # 单个 token：--long、--long=meta、-s、-s meta 四种。
 # dash 部分取到第一个分隔符（= 或 空白或行尾），meta 为可选。
