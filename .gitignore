@@ -1,0 +1,35 @@
+# 第三方 sqlmap 本体（install.bat 会 git clone 到 vendor/）
+vendor/
+
+# 运行时数据：任务配置档、扫描输出、选项目录缓存
+profiles/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# 安全扫描临时目录
+.mimosa/
+
+# 虚拟环境
+.venv/
+venv/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# ZCode 工作区内部（计划/会话记录）
+.zcode/
+.mimosa/
+
+# 测试/临时产物
+*.db
+*.sqlite
+profiles/
