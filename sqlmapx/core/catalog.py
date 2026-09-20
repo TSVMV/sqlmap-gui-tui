@@ -16,8 +16,6 @@ from . import config
 
 # 匹配分组头：2 个前导空格、大写开头的标题、以冒号结尾。
 _SECTION_RE = re.compile(r"^  ([A-Z][A-Za-z /()\-]+):\s*$")
-# 匹配选项行：恰好 4 个前导空格后跟 '-'。
-_OPTION_RE = re.compile(r"^    -")
 # 规范段由逗号分隔的选项 token 组成（每个 token 以 '-' 开头）。
 # 描述段是去掉 token 后的剩余文本。这里不做"按空格切分"，而是按
 # "-token" 序列切分，避免 sqlmap 帮助中分隔空格数不固定带来的误判。
@@ -248,9 +246,10 @@ def parse_hh(text: str, version: str) -> Catalog:
     return cat
 
 
-def build() -> Catalog:
+def build(version: Optional[str] = None) -> Catalog:
     """实时构建目录（不读缓存）。"""
-    version = _run_version()
+    if version is None:
+        version = _run_version()
     text = _run_hh()
     return parse_hh(text, version)
 
@@ -271,7 +270,7 @@ def load(force: bool = False) -> Catalog:
     live_version = _run_version()
     if cached and cached.get("version") == live_version:
         return _from_dict(cached)
-    cat = build()
+    cat = build(live_version)
     config.CATALOG_CACHE.parent.mkdir(parents=True, exist_ok=True)
     config.CATALOG_CACHE.write_text(
         json.dumps(cat.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")

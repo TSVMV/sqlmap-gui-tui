@@ -21,11 +21,18 @@ from ..core.output import parse_log
 
 
 def _build_catalog() -> Catalog:
-    return load_catalog()
+    try:
+        return load_catalog()
+    except Exception as e:
+        raise SystemExit(f"无法构建选项目录：{e}")
 
 
 def main() -> int:
-    config.check_sqlmap()
+    try:
+        config.check_sqlmap()
+    except FileNotFoundError as e:
+        print(f"[sqlmap-gui] 错误：{e}", file=sys.stderr)
+        return 127
     catalog = _build_catalog()
     by_group = catalog.by_group()
     flag_names = {o.name for o in catalog.options if o.is_flag}
@@ -263,7 +270,11 @@ def main() -> int:
             p = profiles.Profile(name=f"profile{len(profiles.list_profiles()) + 1}",
                                  target=self.target_var.get().strip(),
                                  options=self._collect())
-            profiles.save(p)
+            try:
+                profiles.save(p)
+            except Exception as e:
+                self._append(f"保存配置档失败：{e}", "err")
+                return
             self.profile_combo.configure(values=profiles.list_profiles() or ["(无)"])
             self.profile_combo.set(p.name)
             self._append(f"已保存配置档：{p.name}", "ok")
@@ -275,7 +286,11 @@ def main() -> int:
             if not name or name == "(无)":
                 self._append("无可加载配置档。", "info")
                 return
-            p = profiles.load(name)
+            try:
+                p = profiles.load(name)
+            except Exception as e:
+                self._append(f"加载配置档失败：{e}", "err")
+                return
             self.target_var.set(p.target)
             self.selected_preset = None
             for n, v in p.options.items():

@@ -42,20 +42,27 @@ def _split_args(argv):
 def _cli(passthrough) -> int:
     """CLI 透传：委托给 runner.quick_run（子进程参数列表，shell=False）。"""
     from .core import runner, config
-    config.check_sqlmap()
+    try:
+        config.check_sqlmap()
+    except FileNotFoundError as e:
+        print(f"[sqlmapx] 错误：{e}", file=sys.stderr)
+        return 127
     proc = runner.quick_run(passthrough)
     return proc.returncode
 
 
 def main() -> int:
-    mode, _batch, passthrough = _split_args(sys.argv[1:])
+    mode, batch, passthrough = _split_args(sys.argv[1:])
     if mode == "tui":
         from .tui import app as tui
         return tui.main()
     if mode == "gui":
         from .gui import app as gui
         return gui.main()
-    # 默认 cli
+    # 默认 cli：--batch 是 sqlmapx 自身的剥离开关，透传时补回给 sqlmap，
+    # 避免用户在参数开头写 --batch 时被吞掉。
+    if batch and "--batch" not in passthrough:
+        passthrough = passthrough + ["--batch"]
     return _cli(passthrough)
 
 
