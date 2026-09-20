@@ -11,9 +11,7 @@ from typing import List, Optional
 
 from . import config
 
-_DBMS_RE = re.compile(r"(?i)\[DBMS\]:\s+(?P<dbms>[^\s]+)")
-_TECH_RE = re.compile(r"(?i)using (?P<tech>technique\s+[(][A-Z\s,][)\]]|(?P<t>[AEUMNOPQRSTCZ]{1,}))")
-_INJ_RE = re.compile(r"(?i)parameter[^\n]*?(?P<p>[^\n:]+):\s*(?P<tech>[A-Z ]+)")
+_DBMS_RE = re.compile(r"(?i)(?:\[dbms\]|back-end dbms|dbms)\s*:\s*(?P<dbms>[^\s]+)")
 _PAYLOAD_RE = re.compile(r"(?i)\[?payload[?]:\s*(?P<payload>.*)")
 _DUMP_RE = re.compile(r"(?i)fetching data?\s+from\s+(?P<what>[\w./]+)")
 _DB_RE = re.compile(r"(?i)available databases?[:\s]*(?P<list>.*)")
@@ -54,20 +52,29 @@ def parse_log(text: str) -> Summary:
     for m in _DBMS_RE.finditer(text):
         s.dbms = m.group("dbms")
         break
-    # 注入点：sqlmap 形如 "... parameter 'id' is dynamic ... is injectable"
+    # 注入点：sqlmap 形如 "... parameter 'id' is dynamic ... is injectable"。
+    # lookahead 确认同行（允许中间出现 'DBMS' 之类）后置 injectable，
+    # 仅捕获每行第一个引号对，避免把 "is 'MySQL' injectable" 的 DBMS 名误判为参数。
     for m in re.finditer(
-        r"(?i)parameter[^\n]*'(?P<p>[^']+)'[^\n]*injectable", text
+        r"(?i)parameter[^\n]*?'(?P<p>[^'\n]+)'(?=[^\n]*injectable)", text
     ):
-        s.injections.append(m.group("p"))
-    # technique：匹配 "technique (boolean-based blind)" / "technique (E, O, Q, T)" 等
-    m = re.search(r"(?i)technique\s+\((?P<tech>[^)]*)\)", text)
+        if m.group("p") not in s.injections:
+            s.injections.append(m.group("p"))
+    # technique：匹配 sqlmap 真实输出 "technique(s): boolean-based blind"，
+    # 以及旧/变体格式 "technique (boolean-based blind)"。
+    m = (re.search(r"(?i)technique\(s\)\s*:\s*(?P<tech>[^,\n;]+)", text)
+         or re.search(r"(?i)technique\s*\(\s*(?P<tech>[^)]+?)\s*\)", text))
     if m:
         s.technique = m.group("tech").strip()
-    # 可用数据库：匹配 "available databases [X]: ..." 之后的若干 'name' 行
+    # 可用数据库：匹配 "available databases [X]: ..." 之后的列表行。
+    # sqlmap 真实输出为 "[*] information_schema"；兼容旧版 'name' 行。
     dm = re.search(r"(?i)available databases? \[\d+\]:", text)
     if dm:
         tail = text[dm.end():]
-        s.databases = re.findall(r"(?im)^\s+'(?P<db>[^']+)'\s*$", tail)[:20]
+        s.databases = (
+            re.findall(r"(?im)^\s*\[\*\]\s+(?P<db>\S+)\s*$", tail)
+            + re.findall(r"(?im)^\s+'(?P<db>[^']+)'\s*$", tail)
+        )[:20]
     # payload
     s.payloads = [m.group("payload").strip() for m in _PAYLOAD_RE.finditer(text)][:5]
     # dump

@@ -31,7 +31,11 @@ def _build_catalog() -> Catalog:
 
 
 def main() -> int:
-    config.check_sqlmap()
+    try:
+        config.check_sqlmap()
+    except FileNotFoundError as e:
+        print(f"[sqlmap-tui] 错误：{e}", file=sys.stderr)
+        return 127
     catalog = _build_catalog()
     by_group = catalog.by_group()
     flag_names = {o.name for o in catalog.options if o.is_flag}
@@ -172,7 +176,7 @@ def main() -> int:
                 opts = presets.merge(self._selected_preset, opts, {})
                 # 占位需补全（-D/-T/--file-read/…）：取专家面板对应输入值
                 for need in self._selected_preset.needs:
-                    if need in opts and str(opts.get(need) or "") == "":
+                    if str(opts.get(need) or "") == "":
                         inp = self._expert_inputs.get(need)
                         opts[need] = inp.value.strip() if inp else ""
             return opts
@@ -191,11 +195,15 @@ def main() -> int:
             if state["runner"] and state["runner"].is_running():
                 return
             opts = self._collect()
-            if self._selected_preset and not all(v for k, v in opts.items()
-                                                  if k in self._selected_preset.needs):
+            if self._selected_preset and not all(
+                    str(opts.get(k) or "") for k in self._selected_preset.needs):
                 self._log(self.query_one("#log", RichLog),
                           f"预设 [bold]{self._selected_preset.title}[/] 需补全：{self._selected_preset.needs}（专家面板填值或取消任务）",
                           "yellow")
+                return
+            if not opts:
+                self._log(self.query_one("#log", RichLog),
+                          "缺少目标：请填目标 URL。", "yellow")
                 return
             preview = " ".join(build_argv(opts, self.catalog))
             self._log(self.query_one("#log", RichLog), f"[bold green]▶ {preview}[/]")
@@ -252,7 +260,11 @@ def main() -> int:
             tg = self.query_one("#target", Input).value.strip()
             p = profiles.Profile(name=f"profile{len(profiles.list_profiles()) + 1}",
                                  target=tg, options=self._collect())
-            profiles.save(p)
+            try:
+                profiles.save(p)
+            except Exception as e:
+                self._log(self.query_one("#log", RichLog), f"保存配置档失败：{e}", "red")
+                return
             sel = self.query_one("#profile", Select)
             sel.add_options([p.name])
             sel.value = p.name
@@ -264,7 +276,11 @@ def main() -> int:
             if not name or name == "(无)":
                 self._log(self.query_one("#log", RichLog), "[dim]无配置档。[/]")
                 return
-            p = profiles.load(name)
+            try:
+                p = profiles.load(name)
+            except Exception as e:
+                self._log(self.query_one("#log", RichLog), f"加载配置档失败：{e}", "red")
+                return
             self.query_one("#target", Input).value = p.target
             for n, v in p.options.items():
                 if n == "-u":
