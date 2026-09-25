@@ -21,6 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "textual>=0.47",
+    "sqlmap>=1.8",
 ]
 
 [project.optional-dependencies]

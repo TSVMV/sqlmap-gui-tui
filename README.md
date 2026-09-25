@@ -31,19 +31,19 @@ GUI ─┘        ├─ catalog   解析 `sqlmap -hh` → 选项目录（随 sq
 
 ## 安装
 
-```bat
-:: Windows
-install.bat
+```bash
+# 从 PyPI 安装（推荐；会自动拉取 sqlmap 本体）
+pip install sqlmapx
 ```
 
-或手动：
+或从源码安装（Windows 可直接跑 `install.bat`）：
 
 ```bash
 git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git vendor/sqlmap
 python -m pip install -e .      # 安装 textual 依赖与三个可执行入口
 ```
 
-无网络时把 sqlmap 放到 `vendor/sqlmap/` 即可；也可用 `SQLMAP_HOME` 指向已有 sqlmap 目录。
+sqlmap 自动发现顺序：`环境变量 SQLMAP_HOME` → pip 安装的 `sqlmap` 包 → 包内 `vendor/sqlmap`。无网络时把 sqlmap 放到 `vendor/sqlmap/` 即可。
 
 ## 使用
 
