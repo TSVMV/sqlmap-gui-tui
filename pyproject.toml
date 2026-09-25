@@ -33,3 +33,18 @@ sqlmap-gui = "sqlmapx.gui.app:main"
 
 [tool.setuptools]
 packages = ["sqlmapx", "sqlmapx.core", "sqlmapx.cli", "sqlmapx.tui", "sqlmapx.gui"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"sqlmapx/cli/passthrough.py" = ["BLE001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -9,8 +9,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from dataclasses import dataclass, asdict, field
-from typing import List, Optional
+from dataclasses import asdict, dataclass, field
 
 from . import config
 
@@ -86,9 +85,9 @@ _TOKEN_RE = re.compile(
 @dataclass
 class Option:
     name: str            # 规范名，优先 --long；仅有短名时用短名
-    long: Optional[str]  # --xxx
-    short: Optional[str]  # -x
-    metavar: Optional[str]
+    long: str | None  # --xxx
+    short: str | None  # -x
+    metavar: str | None
     is_flag: bool        # True=布尔开关（无值），False=需提供值
     group: str
     help: str
@@ -102,8 +101,8 @@ class Option:
 @dataclass
 class Catalog:
     version: str
-    groups: List[str] = field(default_factory=list)
-    options: List[Option] = field(default_factory=list)
+    groups: list[str] = field(default_factory=list)
+    options: list[Option] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -214,7 +213,7 @@ def parse_hh(text: str, version: str) -> Catalog:
     """
     cat = Catalog(version=version)
     current_group = "General"
-    current_opt: Optional[Option] = None
+    current_opt: Option | None = None
 
     for raw in text.splitlines():
         line = raw.rstrip("\n")

@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field, asdict
-from typing import Dict, List
+from dataclasses import asdict, dataclass, field
 
 from . import config
 
@@ -20,14 +19,14 @@ from . import config
 class Profile:
     name: str
     target: str = ""
-    options: Dict[str, object] = field(default_factory=dict)
+    options: dict[str, object] = field(default_factory=dict)
     note: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Profile":
+    def from_dict(cls, d: dict) -> Profile:
         return cls(
             name=d.get("name", "unnamed"),
             target=d.get("target", ""),
@@ -59,7 +58,7 @@ def load(name: str) -> Profile:
     return Profile.from_dict(json.loads(target.read_text(encoding="utf-8")))
 
 
-def list_profiles() -> List[str]:
+def list_profiles() -> list[str]:
     if not config.PROFILES_DIR.is_dir():
         return []
     names = []

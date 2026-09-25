@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass
@@ -17,8 +16,8 @@ class Preset:
     key: str
     title: str
     desc: str
-    options: Dict[str, object] = field(default_factory=dict)
-    needs: List[str] = field(default_factory=list)  # 需用户补全的选项名
+    options: dict[str, object] = field(default_factory=dict)
+    needs: list[str] = field(default_factory=list)  # 需用户补全的选项名
     category: str = "core"
 
 
@@ -27,7 +26,7 @@ def _p(key, title, desc, opts, needs=(), cat="core") -> Preset:
 
 
 # 常用参数快捷（单选项，主屏可直接点/填）
-QUICK_PARAMS: List[dict] = [
+QUICK_PARAMS: list[dict] = [
     {"opt": "--batch", "label": "Batch（跳过交互提问）", "hint": "自动化运行，遇提示取默认"},
     {"opt": "-v", "label": "Verbosity（0-6）", "hint": "默认 1；高则日志更多", "value": "3"},
     {"opt": "--level", "label": "Level（检测深度 1-5）", "hint": "默认 1；越高 payload 越多、越慢", "value": "3"},
@@ -44,7 +43,7 @@ QUICK_PARAMS: List[dict] = [
 ]
 
 # 一键任务（按类别）
-PRESETS: List[Preset] = [
+PRESETS: list[Preset] = [
     # 核心注入链
     _p("detect", "探测注入", "检测是否可注入（不进一步枚举）。sqlmap 默认即检测。",
        {"--batch": "1"}, needs=[]),
@@ -83,14 +82,14 @@ PRESETS: List[Preset] = [
 PRESETS_BY_KEY = {p.key: p for p in PRESETS}
 
 
-def merge(preset: Preset, extra: Dict[str, object], fills: Dict[str, object]) -> Dict[str, object]:
+def merge(preset: Preset, extra: dict[str, object], fills: dict[str, object]) -> dict[str, object]:
     """合并预设 + 用户常用参数 + 占位补全，得到最终选项字典。
 
     - extra：QUICK_PARAMS 里勾选/填写的常用参数。
     - fills：界面针对 preset.needs 补全的值（如 -D/-T/--file-read/…）。
     后者优先级更高（覆盖同键）。空值占位键会被丢弃，避免传空参数。
     """
-    out: Dict[str, object] = {}
+    out: dict[str, object] = {}
     out.update(preset.options)
     out.update({k: v for k, v in extra.items() if v not in (None, "")})
     out.update({k: v for k, v in fills.items() if v not in (None, "")})

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from . import config
 
@@ -21,19 +20,19 @@ _DB_RE = re.compile(r"(?i)available databases?[:\s]*(?P<list>.*)")
 
 @dataclass
 class Summary:
-    dbms: Optional[str] = None
-    technique: Optional[str] = None
-    injections: List[str] = field(default_factory=list)
-    payloads: List[str] = field(default_factory=list)
-    databases: List[str] = field(default_factory=list)
-    dumps: List[str] = field(default_factory=list)
+    dbms: str | None = None
+    technique: str | None = None
+    injections: list[str] = field(default_factory=list)
+    payloads: list[str] = field(default_factory=list)
+    databases: list[str] = field(default_factory=list)
+    dumps: list[str] = field(default_factory=list)
 
     @property
     def has_injection(self) -> bool:
         return bool(self.injections)
 
-    def to_lines(self) -> List[str]:
-        lines: List[str] = []
+    def to_lines(self) -> list[str]:
+        lines: list[str] = []
         if self.dbms:
             lines.append(f"DBMS: {self.dbms}")
         if self.technique:
@@ -75,7 +74,7 @@ def parse_log(text: str) -> Summary:
     return s
 
 
-def dump_path_for(target: str) -> Optional[config.Path]:
+def dump_path_for(target: str) -> config.Path | None:
     """推测 sqlmap 输出日志目录（若目标可稳定映射则返回，否则 None）。"""
     if not target:
         return None
@@ -86,7 +85,7 @@ def dump_path_for(target: str) -> Optional[config.Path]:
     return base
 
 
-def find_latest_log(target: str) -> Optional[config.Path]:
+def find_latest_log(target: str) -> config.Path | None:
     root = dump_path_for(target)
     if root is None:
         return None

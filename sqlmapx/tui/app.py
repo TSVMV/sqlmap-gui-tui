@@ -13,21 +13,20 @@ sqlmap 经子进程驱动，本体零修改。
 from __future__ import annotations
 
 import sys
-from typing import Dict, List, Optional
 
-from ..core import config, profiles
-from ..core.catalog import load as load_catalog, Catalog
-from ..core.runner import Runner, RunResult, build_argv
-from ..core import presets
-from ..core.presets import Preset
+from ..core import config, presets, profiles
+from ..core.catalog import Catalog
+from ..core.catalog import load as load_catalog
 from ..core.output import parse_log
+from ..core.presets import Preset
+from ..core.runner import Runner, RunResult, build_argv
 
 
 def _build_catalog() -> Catalog:
     try:
         return load_catalog()
     except Exception as e:
-        raise SystemExit(f"无法构建选项目录：{e}")
+        raise SystemExit(f"无法构建选项目录：{e}") from e
 
 
 def main() -> int:
@@ -38,19 +37,26 @@ def main() -> int:
 
     try:
         from textual.app import App, ComposeResult
-        from textual.containers import Horizontal, Vertical, Container
-        from textual.widgets import (
-            Button, Header, Footer, Input, Label, RichLog, Switch,
-            Select, TabbedContent, TabPane, Static,
-        )
         from textual.binding import Binding
+        from textual.containers import Horizontal, Vertical
+        from textual.widgets import (
+            Button,
+            Footer,
+            Header,
+            Input,
+            RichLog,
+            Select,
+            Switch,
+            TabbedContent,
+            TabPane,
+        )
     except ImportError:
         print("未安装 Textual。请 `pip install textual`，或改用 CLI 模式。", file=sys.stderr)
         return 127
 
     state = {"runner": None}
 
-    def _task_buttons() -> List[tuple]:
+    def _task_buttons() -> list[tuple]:
         # (preset_key, label) 按类别分组
         labels = {
             "detect": "探测注入", "dbs": "列数据库", "tables": "列表",
@@ -80,9 +86,9 @@ def main() -> int:
         def __init__(self) -> None:
             super().__init__()
             self.catalog = catalog
-            self._expert_switches: Dict[str, "Switch"] = {}
-            self._expert_inputs: Dict[str, "Input"] = {}
-            self._selected_preset: Optional[Preset] = None
+            self._expert_switches: dict[str, Switch] = {}
+            self._expert_inputs: dict[str, Input] = {}
+            self._selected_preset: Preset | None = None
             self._expert_visible = False
 
         # ---- 极简主屏 -----------------------------------------------------
@@ -132,8 +138,8 @@ def main() -> int:
             yield Footer()
 
         # ---- 收集 ---------------------------------------------------------
-        def _quick_extra(self) -> Dict[str, object]:
-            extra: Dict[str, object] = {}
+        def _quick_extra(self) -> dict[str, object]:
+            extra: dict[str, object] = {}
             for q in presets.QUICK_PARAMS:
                 wid = f"q_{q['opt']}"
                 w = self.query_one(f"#{wid}", (Switch, Input))
@@ -146,8 +152,8 @@ def main() -> int:
                         extra[q["opt"]] = v
             return extra
 
-        def _expert_opts(self) -> Dict[str, object]:
-            out: Dict[str, object] = {}
+        def _expert_opts(self) -> dict[str, object]:
+            out: dict[str, object] = {}
             for name, sw in self._expert_switches.items():
                 if not sw.value:
                     continue
@@ -158,8 +164,8 @@ def main() -> int:
                     out[name] = inp.value.strip() or name
             return out
 
-        def _collect(self) -> Dict[str, object]:
-            opts: Dict[str, object] = {}
+        def _collect(self) -> dict[str, object]:
+            opts: dict[str, object] = {}
             tg = self.query_one("#target", Input).value.strip()
             if tg:
                 opts["-u"] = tg
@@ -200,8 +206,8 @@ def main() -> int:
             preview = " ".join(build_argv(opts, self.catalog))
             self._log(self.query_one("#log", RichLog), f"[bold green]▶ {preview}[/]")
             state["runner"] = Runner(opts, self.catalog,
-                                     on_line=lambda l: self.call_from_thread(
-                                         self._on_line, l.rstrip("\n")),
+                                     on_line=lambda line: self.call_from_thread(
+                                         self._on_line, line.rstrip("\n")),
                                      on_done=lambda r: self.call_from_thread(self._on_done, r))
             state["runner"].start()
 

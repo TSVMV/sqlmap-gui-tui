@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from ..core import config, runner
+from ..core import runner
 
 
 def main() -> int:

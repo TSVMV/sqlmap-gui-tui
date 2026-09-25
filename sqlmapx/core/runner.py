@@ -8,12 +8,13 @@
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
+from typing import Callable
 
 from . import config
 from .catalog import Catalog
@@ -33,7 +34,7 @@ def _kill_process_tree(pid: int) -> None:
                    stdin=subprocess.DEVNULL)
 
 
-def build_argv(options: Dict[str, object], catalog: Optional[Catalog] = None) -> List[str]:
+def build_argv(options: dict[str, object], catalog: Catalog | None = None) -> list[str]:
     """把选项字典转成 sqlmap 命令行参数。
 
     - 键已是选项名（如 ``-u``/``-D``/``-T``/``-v``/``--dbms``）：原样作为选项名透传。
@@ -43,7 +44,7 @@ def build_argv(options: Dict[str, object], catalog: Optional[Catalog] = None) ->
     """
     cat = catalog or Catalog(version="")
     by_name = {o.name: o for o in cat.options}
-    argv: List[str] = []
+    argv: list[str] = []
     for k, v in options.items():
         # 键原样作为选项名（短形如 -D/-T/-v 与长形如 --dbms 都直接透传，
         # 不因目录缺失而被强行加 "--" 前缀，从而保留 sqlmap 原始选项名）。
@@ -63,8 +64,8 @@ def build_argv(options: Dict[str, object], catalog: Optional[Catalog] = None) ->
 
 @dataclass
 class RunResult:
-    exit_code: Optional[int]
-    argv: List[str]
+    exit_code: int | None
+    argv: list[str]
     output: str = ""
     started: float = 0.0
     stopped: float = 0.0
@@ -75,11 +76,11 @@ class Runner:
 
     def __init__(
         self,
-        options: Dict[str, object],
-        catalog: Optional[Catalog] = None,
-        on_line: Optional[Callable[[str], None]] = None,
-        on_done: Optional[Callable[[RunResult], None]] = None,
-        extra_args: Optional[List[str]] = None,
+        options: dict[str, object],
+        catalog: Catalog | None = None,
+        on_line: Callable[[str], None] | None = None,
+        on_done: Callable[[RunResult], None] | None = None,
+        extra_args: list[str] | None = None,
     ):
         config.ensure_dirs()
         config.check_sqlmap()
@@ -89,10 +90,10 @@ class Runner:
         self.on_done = on_done
         self.extra_args = extra_args or []
         self.argv = build_argv(options, catalog) + self.extra_args
-        self._proc: Optional[subprocess.Popen] = None
-        self._thread: Optional[threading.Thread] = None
+        self._proc: subprocess.Popen | None = None
+        self._thread: threading.Thread | None = None
         self._result = RunResult(exit_code=None, argv=self.argv)
-        self._chunks: List[str] = []
+        self._chunks: list[str] = []
 
     def start(self) -> None:
         self._result.started = time.time()
@@ -124,19 +125,15 @@ class Runner:
                 break
             self._chunks.append(line)
             if self.on_line:
-                try:
+                with contextlib.suppress(Exception):
                     self.on_line(line)
-                except Exception:
-                    pass
         self._proc.wait()
         self._result.stopped = time.time()
         self._result.exit_code = self._proc.returncode
         self._result.output = "".join(self._chunks)
         if self.on_done:
-            try:
+            with contextlib.suppress(Exception):
                 self.on_done(self._result)
-            except Exception:
-                pass
 
     def is_running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
@@ -152,23 +149,19 @@ class Runner:
             else:
                 os.killpg(os.getpgid(pid), 9)
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 self._proc.kill()
-            except Exception:
-                pass
 
-    def wait(self, timeout: Optional[float] = None) -> RunResult:
+    def wait(self, timeout: float | None = None) -> RunResult:
         if self._thread:
             self._thread.join(timeout)
         if self._proc:
-            try:
+            with contextlib.suppress(subprocess.TimeoutExpired):
                 self._proc.wait(timeout=0)
-            except subprocess.TimeoutExpired:
-                pass
         return self._result
 
 
-def quick_run(argv: List[str]) -> subprocess.CompletedProcess:
+def quick_run(argv: list[str]) -> subprocess.CompletedProcess:
     """同步阻塞执行（CLI 透传模式），stdio 直通父进程。
 
     安全：argv 为参数列表，shell=False，用户输入不进入 shell。

@@ -9,15 +9,14 @@ from __future__ import annotations
 import queue
 import sys
 import tkinter as tk
-from tkinter import ttk, messagebox
-from typing import Dict, Optional
+from tkinter import ttk
 
-from ..core import config, profiles
-from ..core.catalog import load as load_catalog, Catalog
-from ..core.runner import Runner, RunResult, build_argv
-from ..core import presets
-from ..core.presets import Preset
+from ..core import config, presets, profiles
+from ..core.catalog import Catalog
+from ..core.catalog import load as load_catalog
 from ..core.output import parse_log
+from ..core.presets import Preset
+from ..core.runner import Runner, RunResult, build_argv
 
 
 def _build_catalog() -> Catalog:
@@ -29,21 +28,21 @@ def main() -> int:
     catalog = _build_catalog()
     by_group = catalog.by_group()
     flag_names = {o.name for o in catalog.options if o.is_flag}
-    out_q: "queue.Queue" = queue.Queue()
+    out_q: queue.Queue = queue.Queue()
 
     class App:
         def __init__(self, root: tk.Tk):
             self.root = root
             self.catalog = catalog
-            self.runner: Optional[Runner] = None
+            self.runner: Runner | None = None
             self.target_var = tk.StringVar()
-            self.selected_preset: Optional[Preset] = None
+            self.selected_preset: Preset | None = None
             # 专家面板控件
-            self.exp_checks: Dict[str, tk.BooleanVar] = {}
-            self.exp_entries: Dict[str, tk.StringVar] = {}
+            self.exp_checks: dict[str, tk.BooleanVar] = {}
+            self.exp_entries: dict[str, tk.StringVar] = {}
             # 常用参数控件
-            self.q_flags: Dict[str, tk.BooleanVar] = {}
-            self.q_entries: Dict[str, tk.StringVar] = {}
+            self.q_flags: dict[str, tk.BooleanVar] = {}
+            self.q_entries: dict[str, tk.StringVar] = {}
             self._build()
             self.root.after(100, self._poll_log)
 
@@ -149,8 +148,8 @@ def main() -> int:
                 self.log.tag_config(tag, foreground=fg)
 
         # ---- 收集 ---------------------------------------------------------
-        def _collect(self) -> Dict[str, object]:
-            opts: Dict[str, object] = {}
+        def _collect(self) -> dict[str, object]:
+            opts: dict[str, object] = {}
             tg = self.target_var.get().strip()
             if tg:
                 opts["-u"] = tg

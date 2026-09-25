@@ -41,7 +41,7 @@ def _split_args(argv):
 
 def _cli(passthrough) -> int:
     """CLI 透传：委托给 runner.quick_run（子进程参数列表，shell=False）。"""
-    from .core import runner, config
+    from .core import config, runner
     config.check_sqlmap()
     proc = runner.quick_run(passthrough)
     return proc.returncode
